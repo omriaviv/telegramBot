@@ -20,8 +20,10 @@ class Main(object):
     def start(self, message):
         self._start = True
         self._players = {}
-        self._bot.send_message(message.chat.id, "Welcome to the Poker Game!")
+        self._bot.send_message(message.chat.id, "Welcome to the Poker Game!"
+                                                "\n\U00002665 \U00002660 \U00002666 \U00002663")
         self._bot.send_message(message.chat.id, "Please enter players name (separated by ,):")
+
 
     def infinity_polling(self):
         self._bot.infinity_polling()
@@ -30,11 +32,11 @@ class Main(object):
         if not self.is_game_started(message.chat.id):
             return
 
-        self._bot.send_message(message.chat.id, "Game over!")
+        self._bot.send_message(message.chat.id, "\U0001f480 Game over!")
 
         end_time = datetime.datetime.now().replace(microsecond=0)
         total_time = end_time - self._startTime
-        self._bot.send_message(message.chat.id, "Total Game Time: " + str(total_time))
+        self._bot.send_message(message.chat.id, f"Total Game Time: {total_time}")
         self.status(message)
         self._start = False
         self._bot.send_message(message.chat.id, "Run winners command: /winners [name:chips] [name:chips] ...")
@@ -47,8 +49,8 @@ class Main(object):
         for player in players:
             self._players.update({player: {"buy": BUY, "food": 0}})
 
-        self._bot.send_message(message.chat.id, "Started!")
-        self._bot.send_message(message.chat.id, "Jackpot: " + str(self.get_jackpot()))
+        self._bot.send_message(message.chat.id, "\U00002705 Started!")
+        self.send_jackpot(message)
 
         self._startTime = datetime.datetime.now().replace(microsecond=0)
 
@@ -69,7 +71,8 @@ class Main(object):
             return
 
         self._players[player]["buy"] = self._players[player]["buy"] + BUY
-        self._bot.send_message(message.chat.id, player + ": buy: " + str(self._players[player]["buy"]))
+        buy = self._players[player]["buy"]
+        self._bot.send_message(message.chat.id, f"{player}\n    buy: {buy}")
 
     def parse_rebuy(self, message):
         split = message.text[1:].split(' ')
@@ -79,7 +82,7 @@ class Main(object):
 
         player = split[1]
         if player not in self._players:
-            self._bot.send_message(message.chat.id, "Player " + player + " doesn't exist")
+            self._bot.send_message(message.chat.id, f"Player {player} doesn't exist")
             return
 
         return player
@@ -89,11 +92,16 @@ class Main(object):
             return
 
         self._bot.send_message(message.chat.id, "Status:")
+        _status = ''
         for player in self._players:
-            food_str = ", food: " + str(self._players[player]["food"]) if self._players[player]["food"] > 0 else ""
-            self._bot.send_message(message.chat.id, player + ": buy: " + str(self._players[player]["buy"]) + food_str)
+            food_amount = self._players[player]["food"]
+            food_str = f"\n    food: {food_amount}" if food_amount > 0 else ""
+            buy = self._players[player]["buy"]
+            _status += f"{player}\n    buy: {buy}{food_str}\n---\n"
 
-        self._bot.send_message(message.chat.id, "Jackpot: " + str(self.get_jackpot()))
+        self._bot.send_message(message.chat.id, _status)
+
+        self.send_jackpot(message)
 
     def food_order(self, message):
         if not self.is_game_started(message.chat.id):
@@ -106,7 +114,7 @@ class Main(object):
 
         player = split[1]
         if player not in self._players:
-            self._bot.send_message(message.chat.id, "Player " + player + " doesn't exist")
+            self._bot.send_message(message.chat.id, f"Player {player} doesn't exist")
             return
 
         total_amount = int(split[2])
@@ -124,7 +132,7 @@ class Main(object):
                                    "Invalid command, please try again: /winners [name:chips] [name:chips] ...")
             return
 
-        self._bot.send_message(message.chat.id, "Jackpot: " + str(self.get_jackpot()))
+        self.send_jackpot(message)
 
         for winners_split in command_split:
             if ':' not in winners_split:
@@ -136,18 +144,19 @@ class Main(object):
             won = int(split[1]) / CHIPS * BUY
 
             if winner not in self._players:
-                self._bot.send_message(message.chat.id, winner + " doesn't exist")
+                self._bot.send_message(message.chat.id, f"{winner} doesn't exist")
                 return
 
             player = self._players[winner]
-            self._bot.send_message(message.chat.id, winner + " won " + str(won - player["buy"]))
+            amount = won - player["buy"]
+            self._bot.send_message(message.chat.id, f"\U0001F3C6 {winner} won {amount} \U0001F4B5")
 
-    def get_jackpot(self):
+    def send_jackpot(self, message):
         jackpot = 0
         for player in self._players:
             jackpot += self._players[player]["buy"]
 
-        return jackpot
+        self._bot.send_message(message.chat.id, f"Jackpot: {jackpot} \U0001F4B5")
 
 
 @teleBot.message_handler(commands=['start'])
