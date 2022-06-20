@@ -19,7 +19,7 @@ class Main(object):
     def start(self, message):
         self._start = True
         self._players = {}
-        self._bot.send_message(message.chat.id, "Welcome to the Pocker Game!")
+        self._bot.send_message(message.chat.id, "Welcome to the Poker Game!")
         self._bot.send_message(message.chat.id, "Please enter players name (separated by ,):")
 
     def infinity_polling(self):
