@@ -2,7 +2,7 @@ import datetime
 import telebot
 from telebot import TeleBot
 
-API_KEY = '5527567369:AAGH2h4kF0w0sW3eFARorWofAWPqbZfh7Go'
+API_KEY = 'TODO'
 teleBot = telebot.TeleBot(API_KEY)
 BUY = 20
 CHIPS = 1000
