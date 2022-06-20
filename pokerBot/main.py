@@ -4,11 +4,10 @@ import os
 import telebot
 from telebot import TeleBot
 
+from pokerBot.types import JACKPOT, GAME, CHIPS
+
 API_KEY = os.getenv('API_KEY')
 teleBot = telebot.TeleBot(API_KEY)
-BUY = 20
-CHIPS = 1000
-JACKPOT = "Jackpot"
 
 
 class Main(object):
@@ -27,10 +26,10 @@ class Main(object):
         self._bot.send_message(message.chat.id, "Please enter players name (separated by ,):")
 
         #todo: remove
-        self._players.update({"p1": {"buy": BUY, "food": 0, "food-player": ''}})
-        self._players.update({"p2": {"buy": BUY, "food": 0, "food-player": ''}})
-        self._players.update({"p3": {"buy": BUY, "food": 0, "food-player": ''}})
-        self._players.update({"p4": {"buy": BUY, "food": 0, "food-player": ''}})
+        self._players.update({"p1": {"buy": GAME, "food": 0, "food-player": ''}})
+        self._players.update({"p2": {"buy": GAME, "food": 0, "food-player": ''}})
+        self._players.update({"p3": {"buy": GAME, "food": 0, "food-player": ''}})
+        self._players.update({"p4": {"buy": GAME, "food": 0, "food-player": ''}})
 
 
     def infinity_polling(self):
@@ -55,7 +54,7 @@ class Main(object):
 
         players = message.text[1:].split(',')
         for player in players:
-            self._players.update({player: {"buy": BUY, "food": 0, "food-player": ''}})
+            self._players.update({player: {"buy": GAME, "food": 0, "food-player": ''}})
 
         self._bot.send_message(message.chat.id, "\U00002705 Started!")
         self.send_jackpot(message)
@@ -78,7 +77,7 @@ class Main(object):
         if not player:
             return
 
-        self._players[player]["buy"] = self._players[player]["buy"] + BUY
+        self._players[player]["buy"] = self._players[player]["buy"] + GAME
         buy = self._players[player]["buy"]
         self._bot.send_message(message.chat.id, f"{player}\n    buy: {buy}")
 
@@ -151,7 +150,7 @@ class Main(object):
 
             split = winners_split.split(":")
             winner = split[0]
-            won = float(split[1]) / CHIPS * BUY
+            won = float(split[1]) / CHIPS * GAME
 
             if winner not in self._players:
                 self._bot.send_message(message.chat.id, f"{winner} doesn't exist")
