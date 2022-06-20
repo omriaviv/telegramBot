@@ -6,6 +6,7 @@ from telebot import TeleBot
 API_KEY = '5527567369:AAGH2h4kF0w0sW3eFARorWofAWPqbZfh7Go'
 teleBot = telebot.TeleBot(API_KEY)
 BUY = 20
+CHIPS = 1000
 
 
 class Main(object):
@@ -36,6 +37,7 @@ class Main(object):
         self._bot.send_message(message.chat.id, "Total Game Time: " + str(total_time))
         self.status(message)
         self._start = False
+        self._bot.send_message(message.chat.id, "Run winners command: /winners [name:chips] [name:chips] ...")
 
     def init_players(self, message):
         if not self.is_game_started(message.chat.id):
@@ -46,7 +48,7 @@ class Main(object):
             self._players.update({player: {"buy": BUY, "food": 0}})
 
         self._bot.send_message(message.chat.id, "Started!")
-        self._bot.send_message(message.chat.id, "Jackpot: " + str(len(self._players) * BUY))
+        self._bot.send_message(message.chat.id, "Jackpot: " + str(self.get_jackpot()))
 
         self._startTime = datetime.datetime.now().replace(microsecond=0)
 
@@ -91,6 +93,8 @@ class Main(object):
             food_str = ", food: " + str(self._players[player]["food"]) if self._players[player]["food"] > 0 else ""
             self._bot.send_message(message.chat.id, player + ": buy: " + str(self._players[player]["buy"]) + food_str)
 
+        self._bot.send_message(message.chat.id, "Jackpot: " + str(self.get_jackpot()))
+
     def food_order(self, message):
         if not self.is_game_started(message.chat.id):
             return
@@ -112,6 +116,38 @@ class Main(object):
                 self._players[p]["food"] = round(amount)
 
         self.status(message)
+
+    def winners(self, message):
+        command_split = message.text[9:].split(' ')
+        if len(command_split) < 1:
+            self._bot.send_message(message.chat.id,
+                                   "Invalid command, please try again: /winners [name:chips] [name:chips] ...")
+            return
+
+        self._bot.send_message(message.chat.id, "Jackpot: " + str(self.get_jackpot()))
+
+        for winners_split in command_split:
+            if ':' not in winners_split:
+                self._bot.send_message(message.chat.id,
+                                       "Invalid command, please try again: /winners [name:chips] [name:chips] ...")
+
+            split = winners_split.split(":")
+            winner = split[0]
+            won = int(split[1]) / CHIPS * BUY
+
+            if winner not in self._players:
+                self._bot.send_message(message.chat.id, winner + " doesn't exist")
+                return
+
+            player = self._players[winner]
+            self._bot.send_message(message.chat.id, winner + " won " + str(won - player["buy"]))
+
+    def get_jackpot(self):
+        jackpot = 0
+        for player in self._players:
+            jackpot += self._players[player]["buy"]
+
+        return jackpot
 
 
 @teleBot.message_handler(commands=['start'])
@@ -143,6 +179,10 @@ def status(message):
 def food(message):
     main.food_order(message)
 
+
+@teleBot.message_handler(commands=['winners'])
+def winners(message):
+    main.winners(message)
 
 if __name__ == '__main__':
     main = Main(teleBot)
