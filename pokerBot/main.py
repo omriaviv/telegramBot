@@ -1,8 +1,10 @@
 import datetime
+import os
+
 import telebot
 from telebot import TeleBot
 
-API_KEY = 'TODO'
+API_KEY = os.getenv('API_KEY')
 teleBot = telebot.TeleBot(API_KEY)
 BUY = 20
 CHIPS = 1000
