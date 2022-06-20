@@ -1,5 +1,4 @@
 import datetime
-
 import telebot
 from telebot import TeleBot
 
@@ -7,6 +6,7 @@ API_KEY = '5527567369:AAGH2h4kF0w0sW3eFARorWofAWPqbZfh7Go'
 teleBot = telebot.TeleBot(API_KEY)
 BUY = 20
 CHIPS = 1000
+JACKPOT = "Jackpot"
 
 
 class Main(object):
@@ -23,6 +23,12 @@ class Main(object):
         self._bot.send_message(message.chat.id, "Welcome to the Poker Game!"
                                                 "\n\U00002665 \U00002660 \U00002666 \U00002663")
         self._bot.send_message(message.chat.id, "Please enter players name (separated by ,):")
+
+        #todo: remove
+        self._players.update({"p1": {"buy": BUY, "food": 0, "food-player": ''}})
+        self._players.update({"p2": {"buy": BUY, "food": 0, "food-player": ''}})
+        self._players.update({"p3": {"buy": BUY, "food": 0, "food-player": ''}})
+        self._players.update({"p4": {"buy": BUY, "food": 0, "food-player": ''}})
 
 
     def infinity_polling(self):
@@ -47,7 +53,7 @@ class Main(object):
 
         players = message.text[1:].split(',')
         for player in players:
-            self._players.update({player: {"buy": BUY, "food": 0}})
+            self._players.update({player: {"buy": BUY, "food": 0, "food-player": ''}})
 
         self._bot.send_message(message.chat.id, "\U00002705 Started!")
         self.send_jackpot(message)
@@ -56,7 +62,7 @@ class Main(object):
 
     def is_game_started(self, chat_id):
         if not self._start:
-            self._bot.send_message(chat_id, "Game was not started!")
+            self._bot.send_message(chat_id, "Game has not started!")
             self._bot.send_message(chat_id, "Please run: /start")
             return False
 
@@ -95,7 +101,8 @@ class Main(object):
         _status = ''
         for player in self._players:
             food_amount = self._players[player]["food"]
-            food_str = f"\n    food: {food_amount}" if food_amount > 0 else ""
+            food_player = self._players[player]["food-player"]
+            food_str = f"\n    food: {food_amount} -> {food_player}" if food_amount > 0 else ""
             buy = self._players[player]["buy"]
             _status += f"{player}\n    buy: {buy}{food_str}\n---\n"
 
@@ -117,11 +124,12 @@ class Main(object):
             self._bot.send_message(message.chat.id, f"Player {player} doesn't exist")
             return
 
-        total_amount = int(split[2])
+        total_amount = float(split[2])
         amount = total_amount / len(self._players)
         for p in self._players:
             if p != player:
-                self._players[p]["food"] = round(amount)
+                self._players[p]["food"] = round(amount, 2)
+                self._players[p]["food-player"] = player
 
         self.status(message)
 
@@ -141,7 +149,7 @@ class Main(object):
 
             split = winners_split.split(":")
             winner = split[0]
-            won = int(split[1]) / CHIPS * BUY
+            won = float(split[1]) / CHIPS * BUY
 
             if winner not in self._players:
                 self._bot.send_message(message.chat.id, f"{winner} doesn't exist")
@@ -156,7 +164,7 @@ class Main(object):
         for player in self._players:
             jackpot += self._players[player]["buy"]
 
-        self._bot.send_message(message.chat.id, f"Jackpot: {jackpot} \U0001F4B5")
+        self._bot.send_message(message.chat.id, f"{JACKPOT}: {jackpot} \U0001F4B5")
 
 
 @teleBot.message_handler(commands=['start'])
@@ -192,6 +200,7 @@ def food(message):
 @teleBot.message_handler(commands=['winners'])
 def winners(message):
     main.winners(message)
+
 
 if __name__ == '__main__':
     main = Main(teleBot)
