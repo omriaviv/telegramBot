@@ -43,7 +43,7 @@ class Main(object):
 
         players = message.text[1:].split(',')
         for player in players:
-            self._players.update({player: BUY})
+            self._players.update({player: {"buy": BUY, "food": 0}})
 
         self._bot.send_message(message.chat.id, "Started!")
         self._bot.send_message(message.chat.id, "Jackpot: " + str(len(self._players) * BUY))
@@ -66,8 +66,8 @@ class Main(object):
         if not player:
             return
 
-        self._players[player] = self._players[player] + BUY
-        self._bot.send_message(message.chat.id, player + ": " + str(self._players[player]))
+        self._players[player]["buy"] = self._players[player]["buy"] + BUY
+        self._bot.send_message(message.chat.id, player + ": buy: " + str(self._players[player]["buy"]))
 
     def parse_rebuy(self, message):
         split = message.text[1:].split(' ')
@@ -83,9 +83,13 @@ class Main(object):
         return player
 
     def status(self, message):
-        self._bot.send_message(message.chat.id, "Re-buys:")
+        if not self.is_game_started(message.chat.id):
+            return
+
+        self._bot.send_message(message.chat.id, "Status:")
         for player in self._players:
-            self._bot.send_message(message.chat.id, player + ": " + str(self._players[player]))
+            food_str = ", food: " + str(self._players[player]["food"]) if self._players[player]["food"] > 0 else ""
+            self._bot.send_message(message.chat.id, player + ": buy: " + str(self._players[player]["buy"]) + food_str)
 
     def food_order(self, message):
         if not self.is_game_started(message.chat.id):
@@ -101,10 +105,13 @@ class Main(object):
             self._bot.send_message(message.chat.id, "Player " + player + " doesn't exist")
             return
 
-        amount = int(split[2])
-        self._bot.send_message(message.chat.id, "Every player owes "
-                               + player + ": " + str(amount / len(self._players)) + " for food")
+        total_amount = int(split[2])
+        amount = total_amount / len(self._players)
+        for p in self._players:
+            if p != player:
+                self._players[p]["food"] = round(amount)
 
+        self.status(message)
 
 
 @teleBot.message_handler(commands=['start'])
