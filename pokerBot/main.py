@@ -4,7 +4,7 @@ import os
 import telebot
 from telebot import TeleBot
 
-from pokerBot.types import JACKPOT, GAME, CHIPS, Player
+from pokerBot.model import JACKPOT, GAME, CHIPS, Player
 
 API_KEY = os.getenv('API_KEY')
 teleBot = telebot.TeleBot(API_KEY)
@@ -32,10 +32,10 @@ class Main(object):
         self._startTime = datetime.datetime.now().replace(microsecond=0)
 
         # todo: remove
-        self._players.append(Player("p1"))
-        self._players.append(Player("p2"))
-        self._players.append(Player("p3"))
-        self._players.append(Player("p4"))
+        # self._players.append(Player("p1"))
+        # self._players.append(Player("p2"))
+        # self._players.append(Player("p3"))
+        # self._players.append(Player("p4"))
 
     def infinity_polling(self):
         self._bot.infinity_polling()
@@ -105,16 +105,12 @@ class Main(object):
         return players[0]
 
     def status(self, message):
-        if not self.is_game_started(message.chat.id):
-            return
-
-        self._bot.send_message(message.chat.id, "Status:")
         _status = ''
         for player in self._players:
             _status += f"{player}\n---\n"
+        _status += f"{JACKPOT}: {self.get_jackpot()} \U0001F4B5"
 
         self._bot.send_message(message.chat.id, _status)
-        self.send_jackpot(message)
 
     def food_order(self, message):
         if not self.is_game_started(message.chat.id):
@@ -166,20 +162,44 @@ class Main(object):
                 self.send_invalid_winners_command(message.chat.id)
                 return
 
-            won = float(split[1]) / CHIPS * GAME
             player = players[0]
-            amount = won - player.game_payment.amount
-            # todo validate jackpot amount with total chips
+            player.win_payment.amount = float(split[1]) / CHIPS * GAME
+
             # todo calculate owes to by game/food
 
-            self._bot.send_message(message.chat.id, f"\U0001F3C6 {winner} won {amount if amount > 0 else 0} \U0001F4B5")
+            self._bot.send_message(message.chat.id, f"\U0001F3C6 {winner} won {player.win_payment.amount} \U0001F4B5")
+
+        jackpot = self.get_jackpot()
+        total_wins = self.get_total_wins()
+        if total_wins > jackpot:
+            self._bot.send_message(message.chat.id,
+                                   f"\U0001F6AB Invalid wins amount, "
+                                   f"total wins: {total_wins}, jackpot: {jackpot}")
+        else:
+            if total_wins < jackpot:
+                self._bot.send_message(message.chat.id,
+                                       f"Jackpot left with amount: {jackpot - total_wins}, jackpot: {jackpot}"
+                                       f", total wins: {total_wins}"
+                                       f"\nPlease run more /winners")
 
     def send_jackpot(self, message):
+        jackpot = self.get_jackpot()
+
+        self._bot.send_message(message.chat.id, f"{JACKPOT}: {jackpot} \U0001F4B5")
+
+    def get_jackpot(self):
         jackpot = 0
         for player in self._players:
             jackpot += player.game_payment.amount
 
-        self._bot.send_message(message.chat.id, f"{JACKPOT}: {jackpot} \U0001F4B5")
+        return jackpot
+
+    def get_total_wins(self):
+        total_wins = 0
+        for player in self._players:
+            total_wins += player.win_payment.amount
+
+        return total_wins
 
     def help(self, message):
         help_str = f"- /start - start a game" \
@@ -238,11 +258,6 @@ def food(message):
 @teleBot.message_handler(commands=['winners'])
 def winners(message):
     main.winners(message)
-
-
-@teleBot.message_handler(commands=['help'])
-def help(message):
-    main.help(message)
 
 
 if __name__ == '__main__':
