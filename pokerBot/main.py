@@ -28,6 +28,7 @@ class Main(object):
             self._bot.send_message(message.chat.id, "No players were added, please run /add-player [name]")
             return
 
+        self.init_players()
         self.db_service.insert_started_timestamp(datetime.now().replace(microsecond=0).timestamp())
         self._bot.send_message(message.chat.id, "Welcome to the Poker Game!"
                                                 "\n\U00002665 \U00002660 \U00002666 \U00002663")
@@ -105,7 +106,7 @@ class Main(object):
         players = self.db_service.get_all_players()
         for player in players:
             _status += f"{player}\n---\n"
-        _status += f"{JACKPOT}: {self.get_jackpot()} \U0001F4B5"
+        _status += self.format_jackpot(self.get_jackpot())
 
         self._bot.send_message(message.chat.id, _status)
 
@@ -168,7 +169,6 @@ class Main(object):
 
             self._bot.send_message(message.chat.id, f"\U0001F3C6 {winner} won {player.win_payment.amount} \U0001F4B5")
 
-        # todo from db
         jackpot = self.get_jackpot()
         total_wins = self.get_total_wins()
         if total_wins > jackpot:
@@ -184,8 +184,11 @@ class Main(object):
 
     def send_jackpot(self, message):
         jackpot = self.get_jackpot()
+        self._bot.send_message(message.chat.id, self.format_jackpot(jackpot))
 
-        self._bot.send_message(message.chat.id, f"{JACKPOT}: {jackpot} \U0001F4B5")
+    @staticmethod
+    def format_jackpot(jackpot: float):
+        return f"{JACKPOT}: {jackpot} \U0001F4B5\nTotal Chips: {int(jackpot / GAME * CHIPS)}"
 
     def get_jackpot(self) -> float:
         jackpot = 0
@@ -244,6 +247,11 @@ class Main(object):
 
     def send_player_does_not_exist(self, chat_id, player_name):
         self._bot.send_message(chat_id, f"\U0001F6AB {player_name} doesn't exist")
+
+    def init_players(self):
+        players = self.db_service.get_all_players()
+        [p.__init__(p.name) for p in players]
+        [self.db_service.update_player(p) for p in players]
 
 
 @teleBot.message_handler(commands=['start'])
