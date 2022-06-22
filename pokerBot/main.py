@@ -49,12 +49,15 @@ class Main(object):
         self._bot.send_message(message.chat.id, f"{STOPWATCH} Total Game Time: {total_time}")
         self.status(message)
         self.db_service.remove_started_timestamp(started_timestamp)
-        self._bot.send_message(message.chat.id, "Run winners command: /winners [name:chips] [name:chips] ...")
+        self._bot.send_message(message.chat.id, f"Run winners command: "
+                                                f"/{WINNERS_COMMAND} [name:chips] [name:chips] ...")
 
     def add_player(self, message):
-        name = self.parse_player_name(message, ADD_PLAYER_COMMAND)
-        if not name:
+        params = self.parse_command(message, ADD_PLAYER_COMMAND, ['name'])
+        if len(params) == 0:
             return
+
+        name = params[0]
 
         player = self.db_service.search_player(name)
         if not player:
@@ -87,13 +90,11 @@ class Main(object):
         self._bot.send_message(message.chat.id, f"{player}")
 
     def parse_rebuy(self, message) -> Player:
-        split = message.text[1:].split(' ')
-        if len(split) != 2:
-            self._bot.send_message(message.chat.id, f"{PROHIBITED} Invalid command, please try again: "
-                                                    f"/{RE_BUY_COMMAND} [name]")
-            return None
+        params = self.parse_command(message, RE_BUY_COMMAND, ['name'])
+        if len(params) == 0:
+            return
 
-        player_name = split[1]
+        player_name = params[0]
         player = self.db_service.search_player(player_name)
         if not player:
             self.send_player_does_not_exist(message.chat.id, player_name)
@@ -113,22 +114,24 @@ class Main(object):
         if not self.is_game_started(message.chat.id):
             return
 
-        split = message.text[1:].split(' ')
-        if len(split) != 3:
-            self.send_invalid_food_command(message.chat.id)
+        params = self.parse_command(message, FOOD_COMMAND, ['name', 'amount'])
+        if len(params) == 0:
             return
 
-        player_name = split[1]
+        player_name = params[0]
+        food_amount = params[1]
+
         player = self.db_service.search_player(player_name)
         if not player:
             self.send_player_does_not_exist(message.chat.id, player_name)
             return
 
-        if not split[2].isnumeric():
-            self.send_invalid_food_command(message.chat.id)
+        if not food_amount.isnumeric():
+            self._bot.send_message(message.chat.id, f"{PROHIBITED} "
+                                                    f"Invalid command, amount is not numeric")
             return
 
-        total_amount = float(split[2])
+        total_amount = float(food_amount)
         players = self.db_service.get_all_players()
         amount = total_amount / len(players)
         for i in range(len(players)):
@@ -179,7 +182,7 @@ class Main(object):
                 self._bot.send_message(message.chat.id,
                                        f"Jackpot left with amount: {jackpot - total_wins}, jackpot: {jackpot}"
                                        f", total wins: {total_wins}"
-                                       f"\nPlease run more /winners")
+                                       f"\nPlease add more /{WINNERS_COMMAND}")
 
     def send_jackpot(self, message):
         jackpot = self.get_jackpot()
@@ -203,20 +206,21 @@ class Main(object):
 
         return total_wins
 
-    def parse_player_name(self, message, command) -> str:
+    def parse_command(self, message, command: str, params: []) -> []:
         split = message.text.split(' ')
-        if len(split) < 2:
+        if len(split) < len(params) + 1:
             self._bot.send_message(message.chat.id, f"{PROHIBITED} "
-                                                    f"Invalid command, please try again: /{command} [name]")
-            return ''
+                                                    f"Invalid command, please try again: /{command} {params}")
+            return []
 
-        return split[1]
+        return split[1:]
 
     def remove_player(self, message):
-        name = self.parse_player_name(message, REMOVE_PLAYER_COMMAND)
-        if not name:
+        params = self.parse_command(message, REMOVE_PLAYER_COMMAND, ['name'])
+        if len(params) == 0:
             return
 
+        name = params[0]
         player = self.db_service.search_player(name)
         if not player:
             self.send_player_does_not_exist(message.chat.id, name)
@@ -237,14 +241,10 @@ class Main(object):
 
         self._bot.send_message(message.chat.id, f"{BOOK}\n{help_str}")
 
-    def send_invalid_food_command(self, chat_id):
-        self._bot.send_message(chat_id,
-                               f"{PROHIBITED} Invalid command, please try again: /{FOOD_COMMAND} [name] [amount]")
-
     def send_invalid_winners_command(self, chat_id):
         self._bot.send_message(chat_id,
                                f"{PROHIBITED} Invalid command, "
-                               "please try again: /winners [name:chips] [name:chips] ...")
+                               f"please try again: /{WINNERS_COMMAND} [name:chips] [name:chips] ...")
 
     def send_player_does_not_exist(self, chat_id, player_name):
         self._bot.send_message(chat_id, f"{PROHIBITED} {player_name} doesn't exist")
