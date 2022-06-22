@@ -41,9 +41,9 @@ def food(message):
     main.poker_bot_service.food_order(message)
 
 
-@teleBot.message_handler(commands=[WINNERS_COMMAND])
-def winners(message):
-    main.poker_bot_service.winners(message)
+@teleBot.message_handler(commands=[WINNER_COMMAND])
+def winner(message):
+    main.poker_bot_service.winner(message)
 
 
 @teleBot.message_handler(commands=[ADD_PLAYER_COMMAND])

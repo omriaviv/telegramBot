@@ -4,7 +4,7 @@ from pokerBot.constants import *
 class Player(object):
     def __init__(self, name: str):
         self.name = name
-        self.game_payment = Payment(PaymentType.GAME, GAME, JACKPOT)
+        self.game_payment = Payment(PaymentType.GAME, GAME, '')
         self.food_payment = Payment(PaymentType.FOOD, 0, '')
         self.win_payment = Payment(PaymentType.WIN, 0, '')
 
@@ -14,8 +14,8 @@ class Player(object):
     def __dict__(self):
         return {
             'name': self.name,
-            'game_payment': self.game_payment.__dict__(),
             'food_payment': self.food_payment.__dict__(),
+            'game_payment': self.game_payment.__dict__(),
             'win_payment': self.win_payment.__dict__()
         }
 

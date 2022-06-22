@@ -43,8 +43,7 @@ class PokerBotService(object):
         self._bot.send_message(message.chat.id, f"{STOPWATCH} Total Game Time: {total_time}")
         self.status(message)
         self.db_service.remove_started_timestamp(started_timestamp)
-        self._bot.send_message(message.chat.id, f"Run winners command: "
-                                                f"/{WINNERS_COMMAND} [name:chips] [name:chips] ...")
+        self._bot.send_message(message.chat.id, f"Run /{WINNER_COMMAND} [name] [chips]")
 
     def add_player(self, message):
         params = self.parse_command(message, ADD_PLAYER_COMMAND, ['name'])
@@ -103,6 +102,8 @@ class PokerBotService(object):
         _status += self.format_jackpot(self.get_jackpot())
 
         self._bot.send_message(message.chat.id, _status)
+        self._bot.send_message(message.chat.id,
+                               "Game in progress" if self.db_service.get_started_timestamp() > 0 else "Game ended")
 
     def food_order(self, message):
         if not self.is_game_started(message.chat.id):
@@ -136,47 +137,49 @@ class PokerBotService(object):
 
         self.status(message)
 
-    def winners(self, message):
-        command_split = message.text[9:].split(' ')
-        if len(command_split) < 1:
-            self.send_invalid_winners_command(message.chat.id)
+    def winner(self, message):
+        if self.db_service.get_started_timestamp() > 0:
+            self._bot.send_message(message.chat.id, f"{PROHIBITED} Please run /{END_COMMAND} to end game")
             return
 
-        for winners_split in command_split:
-            if ':' not in winners_split:
-                self.send_invalid_winners_command(message.chat.id)
-                return
+        params = self.parse_command(message, WINNER_COMMAND, ['name', 'chips'])
+        if len(params) == 0:
+            return
 
-            split = winners_split.split(":")
-            winner = split[0]
-            player = self.db_service.search_player(winner)
-            if not player:
-                self.send_player_does_not_exist(message.chat.id, winner)
-                return
+        player_name = params[0]
+        chips = params[1]
 
-            if not split[1].isnumeric():
-                self.send_invalid_winners_command(message.chat.id)
-                return
+        player = self.db_service.search_player(player_name)
+        if not player:
+            self.send_player_does_not_exist(message.chat.id, player_name)
+            return
 
-            player.win_payment.amount = float(split[1]) / CHIPS * GAME
-            self.db_service.update_player(player)
+        if not chips.isnumeric():
+            self._bot.send_message(message.chat.id, f"{PROHIBITED} "
+                                                    f"Invalid command, chips is not numeric")
+            return
 
-            # todo calculate owes to by game/food
-
-            self._bot.send_message(message.chat.id, f"{TROPHY} {winner} won {player.win_payment.amount} {MONEY}")
+        player.win_payment.amount = float(chips) / CHIPS * GAME
 
         jackpot = self.get_jackpot()
-        total_wins = self.get_total_wins()
-        if total_wins > jackpot:
+        total_chips = jackpot / GAME * CHIPS
+        total_wins = (self.get_total_wins() / GAME * CHIPS) + float(chips)
+        if total_wins > total_chips:
             self._bot.send_message(message.chat.id,
                                    f"{PROHIBITED} Invalid wins amount, "
-                                   f"total wins: {total_wins}, jackpot: {jackpot}")
+                                   f"total wins: {int(total_wins)}, chips: {int(total_chips)}")
+            return
+
+        self.db_service.update_player(player)
+        self._bot.send_message(message.chat.id, f"{TROPHY} {player_name} won {player.win_payment.amount} {MONEY}")
+
+        if total_wins < total_chips:
+            self._bot.send_message(message.chat.id,
+                                   f"Jackpot left with chips: {int(total_chips)}"
+                                   f", total wins: {total_wins}"
+                                   f"\nPlease add more /{WINNER_COMMAND}")
         else:
-            if total_wins < jackpot:
-                self._bot.send_message(message.chat.id,
-                                       f"Jackpot left with amount: {jackpot - total_wins}, jackpot: {jackpot}"
-                                       f", total wins: {total_wins}"
-                                       f"\nPlease add more /{WINNERS_COMMAND}")
+            self.status(message)
 
     def send_jackpot(self, message):
         jackpot = self.get_jackpot()
@@ -229,16 +232,11 @@ class PokerBotService(object):
                    f"\n- /{RE_BUY_COMMAND} [player_name] - add re-buy to player" \
                    f"\n- /{FOOD_COMMAND} [player_name] - add food order by player" \
                    f"\n- /{END_COMMAND} - end game" \
-                   f"\n- /{WINNERS_COMMAND} [player_name1:chips player_name2:chips ...] - enter the winners" \
+                   f"\n- /{WINNER_COMMAND} [player_name chips] - enter a winner" \
                    f"\n- /{ADD_PLAYER_COMMAND} [player_name]" \
                    f"\n- /{REMOVE_PLAYER_COMMAND} [player_name]"
 
         self._bot.send_message(message.chat.id, f"{BOOK}\n{help_str}")
-
-    def send_invalid_winners_command(self, chat_id):
-        self._bot.send_message(chat_id,
-                               f"{PROHIBITED} Invalid command, "
-                               f"please try again: /{WINNERS_COMMAND} [name:chips] [name:chips] ...")
 
     def send_player_does_not_exist(self, chat_id, player_name):
         self._bot.send_message(chat_id, f"{PROHIBITED} {player_name} doesn't exist")
