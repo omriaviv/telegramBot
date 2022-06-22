@@ -1,4 +1,4 @@
-from pokerBot.constants import *
+from constants import GAME
 
 
 class Player(object):

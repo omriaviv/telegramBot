@@ -1,5 +1,9 @@
 /pokerBot/__pycache__/*.pyc
 *.pyc
 /.idea/inspectionProfiles
-/pokerBot/dist
-/pokerBot/pyTelegramPokerBot.egg-info
+/src/dist
+/src/pyTelegramPokerBot.egg-info
+/src/build
+*.iml
+/*.iml
+/telegramBot.iml

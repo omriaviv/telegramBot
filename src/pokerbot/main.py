@@ -1,8 +1,8 @@
 import os
 import telebot
 
-from pokerBot.pokerBotService import PokerBotService
-from pokerBot.db.dbService import *
+from constants import *
+from service import PokerBotService
 
 API_KEY = os.getenv('API_KEY')
 teleBot = telebot.TeleBot(API_KEY)

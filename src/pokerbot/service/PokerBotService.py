@@ -1,8 +1,9 @@
 import datetime
 from datetime import datetime
 
-from pokerBot.db.dbService import DbService
-from pokerBot.model import *
+from constants import *
+from db import DbService
+from model import Player
 
 
 class PokerBotService(object):

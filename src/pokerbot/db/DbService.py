@@ -1,11 +1,10 @@
 from tinydb import TinyDB, Query
-
-from pokerBot.model import *
+from model import Player
 
 
 class DbService(object):
     def __init__(self):
-        self.db = TinyDB('db/db.json')
+        self.db = TinyDB('db.json')
         self.query = Query()
 
     def insert_player(self, player: Player) -> int:
@@ -37,4 +36,3 @@ class DbService(object):
     def get_started_timestamp(self) -> float:
         timestamps = self.db.search(self.query.started_timestamp.exists())
         return timestamps[0]['started_timestamp'] if len(timestamps) > 0 else 0
-
