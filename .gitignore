@@ -1,3 +1,5 @@
 /pokerBot/__pycache__/*.pyc
 *.pyc
 /.idea/inspectionProfiles
+/pokerBot/dist
+/pokerBot/pyTelegramPokerBot.egg-info
