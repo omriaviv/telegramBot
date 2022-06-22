@@ -1,11 +1,12 @@
 import datetime
 import os
+from datetime import datetime
 
 import telebot
 from telebot import TeleBot
 
-from pokerBot.db.dbService import DbService
-from pokerBot.model import JACKPOT, GAME, CHIPS, Player
+from pokerBot.db.dbService import *
+from pokerBot.model import *
 
 API_KEY = os.getenv('API_KEY')
 teleBot = telebot.TeleBot(API_KEY)
@@ -15,12 +16,10 @@ class Main(object):
     def __init__(self, bot):
         # type: (TeleBot) -> None
         self._bot = bot
-        self._startTime = None
-        self._start = False
         self.db_service = DbService()
 
     def start(self, message):
-        if self._start:
+        if self.db_service.get_started_timestamp() > 0:
             self._bot.send_message(message.chat.id, "\U0001F92A Game already started, please run /end to end game")
             return
 
@@ -29,11 +28,9 @@ class Main(object):
             self._bot.send_message(message.chat.id, "No players were added, please run /add-player [name]")
             return
 
-        self._start = True
+        self.db_service.insert_started_timestamp(datetime.now().replace(microsecond=0).timestamp())
         self._bot.send_message(message.chat.id, "Welcome to the Poker Game!"
                                                 "\n\U00002665 \U00002660 \U00002666 \U00002663")
-
-        self._startTime = datetime.datetime.now().replace(microsecond=0)
         self._bot.send_message(message.chat.id, "\U00002705 Started!")
         self.send_jackpot(message)
 
@@ -41,16 +38,18 @@ class Main(object):
         self._bot.infinity_polling()
 
     def end(self, message):
-        if not self.is_game_started(message.chat.id):
+        started_timestamp = self.is_game_started(message.chat.id)
+        if started_timestamp == 0:
             return
 
         self._bot.send_message(message.chat.id, "\U0001f480 Game over!")
 
-        end_time = datetime.datetime.now().replace(microsecond=0)
-        total_time = end_time - self._startTime
+        start_time = datetime.fromtimestamp(started_timestamp)
+        end_time = datetime.now().replace(microsecond=0)
+        total_time = end_time - start_time
         self._bot.send_message(message.chat.id, f"\U000023F1 Total Game Time: {total_time}")
         self.status(message)
-        self._start = False
+        self.db_service.remove_started_timestamp(started_timestamp)
         self._bot.send_message(message.chat.id, "Run winners command: /winners [name:chips] [name:chips] ...")
 
     def add_player(self, message):
@@ -68,13 +67,13 @@ class Main(object):
             self._bot.send_message(message.chat.id,
                                    f"\U0001F6AB Player {name} already exist, please choose another name")
 
-    def is_game_started(self, chat_id) -> bool:
-        if not self._start:
+    def is_game_started(self, chat_id) -> float:
+        started_timestamp = self.db_service.get_started_timestamp()
+        if started_timestamp == 0:
             self._bot.send_message(chat_id, "\U0001F6AB Game has not started!")
             self._bot.send_message(chat_id, "Please run: /start")
-            return False
 
-        return True
+        return started_timestamp
 
     def re_buy(self, message):
         if not self.is_game_started(message.chat.id):

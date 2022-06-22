@@ -1,6 +1,4 @@
-JACKPOT = "Jackpot"
-GAME = 20
-CHIPS = 1000
+from pokerBot.constants import *
 
 
 class Player(object):
