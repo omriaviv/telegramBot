@@ -54,12 +54,10 @@ class Main(object):
         self._bot.send_message(message.chat.id, "Run winners command: /winners [name:chips] [name:chips] ...")
 
     def add_player(self, message):
-        split = message.text.split(' ')
-        if len(split) < 2:
-            self._bot.send_message(message.chat.id, "\U0001F6AB Invalid command, please try again: /add-player [name]")
+        name = self.parse_player_name(message, "/add-player")
+        if not name:
             return
 
-        name = split[1]
         player = self.db_service.search_player(name)
         if not player:
             player = Player(name)
@@ -70,7 +68,7 @@ class Main(object):
             self._bot.send_message(message.chat.id,
                                    f"\U0001F6AB Player {name} already exist, please choose another name")
 
-    def is_game_started(self, chat_id):
+    def is_game_started(self, chat_id) -> bool:
         if not self._start:
             self._bot.send_message(chat_id, "\U0001F6AB Game has not started!")
             self._bot.send_message(chat_id, "Please run: /start")
@@ -90,11 +88,11 @@ class Main(object):
         self.db_service.update_player(player)
         self._bot.send_message(message.chat.id, f"{player}")
 
-    def parse_rebuy(self, message):
+    def parse_rebuy(self, message) -> Player:
         split = message.text[1:].split(' ')
         if len(split) != 2:
             self._bot.send_message(message.chat.id, "\U0001F6AB Invalid command, please try again: /rebuy [name]")
-            return
+            return None
 
         player_name = split[1]
         player = self.db_service.search_player(player_name)
@@ -190,19 +188,40 @@ class Main(object):
 
         self._bot.send_message(message.chat.id, f"{JACKPOT}: {jackpot} \U0001F4B5")
 
-    def get_jackpot(self):
+    def get_jackpot(self) -> float:
         jackpot = 0
         for player in self.db_service.get_all_players():
             jackpot += player.game_payment.amount
 
         return jackpot
 
-    def get_total_wins(self):
+    def get_total_wins(self) -> float:
         total_wins = 0
         for player in self.db_service.get_all_players():
             total_wins += player.win_payment.amount
 
         return total_wins
+
+    def parse_player_name(self, message, command) -> str:
+        split = message.text.split(' ')
+        if len(split) < 2:
+            self._bot.send_message(message.chat.id, f"\U0001F6AB Invalid command, please try again: {command} [name]")
+            return ''
+
+        return split[1]
+
+    def remove_player(self, message):
+        name = self.parse_player_name(message, "/remove-player")
+        if not name:
+            return
+
+        player = self.db_service.search_player(name)
+        if not player:
+            self.send_player_does_not_exist(message.chat.id, name)
+            return
+
+        if self.db_service.remove_player(name):
+            self._bot.send_message(message.chat.id, f"\U00002714 {name} was removed")
 
     def help(self, message):
         help_str = f"- /start - start a game" \
@@ -261,6 +280,11 @@ def winners(message):
 @teleBot.message_handler(commands=['add-player'])
 def add_player(message):
     main.add_player(message)
+
+
+@teleBot.message_handler(commands=['remove-player'])
+def remove_player(message):
+    main.remove_player(message)
 
 
 if __name__ == '__main__':
