@@ -15,15 +15,15 @@ class DbService(object):
         return [Player.from_dict(p) for p in players]
 
     def search_player(self, name: str) -> Player:
-        players = self.db.search(self.query.name == name)
+        players = self.db.search(self.query.name == name.lower())
         return Player.from_dict(players[0]) if len(players) > 0 else None
 
     def update_player(self, player: Player) -> bool:
-        ids = self.db.update(player.__dict__(), self.query.name == player.name)
+        ids = self.db.update(player.__dict__(), self.query.name == player.name.lower())
         return True if len(ids) > 0 else False
 
     def remove_player(self, player_name: str) -> bool:
-        ids = self.db.remove(self.query.name == player_name)
+        ids = self.db.remove(self.query.name == player_name.lower())
         return True if len(ids) > 0 else False
 
     def insert_started_timestamp(self, timestamp: float) -> int:
@@ -36,3 +36,8 @@ class DbService(object):
     def get_started_timestamp(self) -> float:
         timestamps = self.db.search(self.query.started_timestamp.exists())
         return timestamps[0]['started_timestamp'] if len(timestamps) > 0 else 0
+
+    def get_player(self, player_id: int) -> Player:
+        doc = self.db.get(doc_id=player_id)
+
+        return Player.from_dict(doc)

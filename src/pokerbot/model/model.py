@@ -1,9 +1,9 @@
 from constants import GAME
-
+import json
 
 class Player(object):
     def __init__(self, name: str):
-        self.name = name
+        self.name = name.lower()
         self.game_payment = Payment(PaymentType.GAME, GAME, '')
         self.food_payment = Payment(PaymentType.FOOD, 0, '')
         self.win_payment = Payment(PaymentType.WIN, 0, '')
@@ -22,6 +22,7 @@ class Player(object):
     @staticmethod
     def from_dict(dict):
         player = Player(dict['name'])
+        player.id = dict.doc_id
         player.game_payment = Payment.from_dict(dict['game_payment'])
         player.food_payment = Payment.from_dict(dict['food_payment'])
         player.win_payment = Payment.from_dict(dict['win_payment'])
@@ -52,3 +53,23 @@ class PaymentType(object):
     GAME = 'GAME'
     FOOD = 'FOOD'
     WIN = 'WIN'
+
+
+class CallbackDataType(object):
+    COMMAND = 'COMMAND'
+    REBUY = 'REBUY'
+    DELETE_REBUY = 'DELETE_REBUY'
+
+
+class ButtonCallbackData(object):
+    def __init__(self, type: CallbackDataType, value: str):
+        self.type = type
+        self.value = value
+
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__)
+
+    @staticmethod
+    def from_json(json_str):
+        obj = json.loads(json_str)
+        return ButtonCallbackData(obj['type'], obj['value'])

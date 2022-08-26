@@ -1,9 +1,11 @@
 import datetime
 from datetime import datetime
 
+from telebot import types
+
 from constants import *
 from db import DbService
-from model import Player
+from model.model import CallbackDataType, ButtonCallbackData, Player
 
 
 class PokerBotService(object):
@@ -47,21 +49,21 @@ class PokerBotService(object):
         self._bot.send_message(message.chat.id, f"Run /{WINNER_COMMAND} [name] [chips]")
 
     def add_player(self, message):
-        params = self.parse_command(message, ADD_PLAYER_COMMAND, ['name'])
-        if len(params) == 0:
-            return
+        self._bot.send_message(message.chat.id,
+                               "Enter player name", reply_markup=types.ForceReply())
 
-        name = params[0]
+    def add_player_name(self, message):
+        player = self.db_service.search_player(message.text)
 
-        player = self.db_service.search_player(name)
         if not player:
-            player = Player(name)
+            player = Player(message.text)
             self.db_service.insert_player(player)
             self._bot.send_message(message.chat.id,
                                    f"{CHECK_MARK_BLACK} {player} was added successfully")
         else:
             self._bot.send_message(message.chat.id,
-                                   f"{PROHIBITED} Player {name} already exist, please choose another name")
+                                   f"{PROHIBITED} Player {message.text} already exist, please choose another name",
+                                   reply_markup=types.ForceReply())
 
     def is_game_started(self, chat_id) -> float:
         started_timestamp = self.db_service.get_started_timestamp()
@@ -75,25 +77,47 @@ class PokerBotService(object):
         if not self.is_game_started(message.chat.id):
             return
 
-        player = self.parse_rebuy(message)
+        markup = self.generate_players_buttons()
+        self._bot.send_message(message.chat.id, "\nRebuy - Choose Player", reply_markup=markup)
+
+    def generate_players_buttons(self):
+        markup = types.InlineKeyboardMarkup()
+        players = self.db_service.get_all_players()
+        for player in players:
+            markup.add(types.InlineKeyboardButton(text=player.name,
+                                                  callback_data=
+                                                  ButtonCallbackData(CallbackDataType.REBUY, player.id).to_json()))
+
+        return markup
+
+    def delete_re_buy(self, message):
+        if not self.is_game_started(message.chat.id):
+            return
+
+        markup = types.InlineKeyboardMarkup()
+
+        players = self.db_service.get_all_players()
+        for player in players:
+            markup.add(types.InlineKeyboardButton(text=player.name,
+                                                  callback_data=ButtonCallbackData(
+                                                      CallbackDataType.DELETE_REBUY,
+                                                      player.id).to_json()))
+
+        self._bot.send_message(message.chat.id, "\nDelete Rebuy - Choose Player", reply_markup=markup)
+
+    def add_rebuy_to_player(self, message, player_id, is_add):
+        player = self.db_service.get_player(player_id)
+
         if not player:
             return
 
-        player.game_payment.amount += GAME
+        if is_add:
+            player.game_payment.amount += GAME
+        elif player.game_payment.amount > GAME:
+            player.game_payment.amount -= GAME
+
         self.db_service.update_player(player)
         self._bot.send_message(message.chat.id, f"{player}")
-
-    def parse_rebuy(self, message) -> Player:
-        params = self.parse_command(message, RE_BUY_COMMAND, ['name'])
-        if len(params) == 0:
-            return
-
-        player_name = params[0]
-        player = self.db_service.search_player(player_name)
-        if not player:
-            self.send_player_does_not_exist(message.chat.id, player_name)
-
-        return player
 
     def status(self, message):
         _status = ''
@@ -227,17 +251,51 @@ class PokerBotService(object):
         if self.db_service.remove_player(name):
             self._bot.send_message(message.chat.id, f"{CHECK_MARK_BLACK} {name} was removed")
 
-    def help(self, message):
-        help_str = f"- /{START_COMMAND} - start a game" \
-                   f"\n- /{STATUS_COMMAND} - get players status" \
-                   f"\n- /{RE_BUY_COMMAND} [player_name] - add re-buy to player" \
-                   f"\n- /{FOOD_COMMAND} [player_name] - add food order by player" \
-                   f"\n- /{END_COMMAND} - end game" \
-                   f"\n- /{WINNER_COMMAND} [player_name chips] - enter a winner" \
-                   f"\n- /{ADD_PLAYER_COMMAND} [player_name]" \
-                   f"\n- /{REMOVE_PLAYER_COMMAND} [player_name]"
+    @staticmethod
+    def generate_menu_buttons():
+        markup = types.InlineKeyboardMarkup()
 
-        self._bot.send_message(message.chat.id, f"{BOOK}\n{help_str}")
+        markup.add(types.InlineKeyboardButton(text='Start',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  START_COMMAND).to_json()),
+                   types.InlineKeyboardButton(text='Status',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  STATUS_COMMAND).to_json()),
+                   types.InlineKeyboardButton(text='Re-buy',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  RE_BUY_COMMAND).to_json()),
+                   types.InlineKeyboardButton(text='Delete Re-buy',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  DELETE_RE_BUY_COMMAND).to_json()),
+                   types.InlineKeyboardButton(text='Food',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  FOOD_COMMAND).to_json()),
+                   types.InlineKeyboardButton(text='End',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  END_COMMAND).to_json()),
+                   types.InlineKeyboardButton(text='Winners',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  WINNER_COMMAND).to_json()),
+                   types.InlineKeyboardButton(text='Add Player',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  ADD_PLAYER_COMMAND).to_json()),
+                   types.InlineKeyboardButton(text='Remove Player',
+                                              callback_data=ButtonCallbackData(
+                                                  CallbackDataType.COMMAND,
+                                                  REMOVE_PLAYER_COMMAND).to_json()))
+
+        return markup
+
+    def help(self, message):
+        self._bot.send_message(message.chat.id, f"{BOOK} Menu", reply_markup=self.generate_menu_buttons())
 
     def send_player_does_not_exist(self, chat_id, player_name):
         self._bot.send_message(chat_id, f"{PROHIBITED} {player_name} doesn't exist")
