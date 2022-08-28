@@ -1,7 +1,6 @@
 JACKPOT = "Jackpot"
 
-# todo move to DB
-GAME = 20
+REBUY_AMOUNT = 20
 CHIPS = 1000
 
 START_COMMAND = 'start'
@@ -11,10 +10,8 @@ DELETE_RE_BUY_COMMAND = 'delete_rebuy'
 STATUS_COMMAND = 'status'
 FOOD_COMMAND = 'food'
 WINNER_COMMAND = 'winner'
-ADD_PLAYER_COMMAND = 'addPlayer'
-ADD_PLAYER_COMMAND2 = 'addplayer'
-REMOVE_PLAYER_COMMAND = 'removePlayer'
-REMOVE_PLAYER_COMMAND2 = 'removeplayer'
+ADD_PLAYER_COMMAND = 'addplayer'
+REMOVE_PLAYER_COMMAND = 'removeplayer'
 MENU_COMMAND = 'menu'
 
 ZANY_FACE = '\U0001F92A'

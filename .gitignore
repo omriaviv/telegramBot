@@ -7,3 +7,7 @@
 *.iml
 /*.iml
 /telegramBot.iml
+/.idea/*
+/db.json
+/dist/*
+/pyTelegramPokerBot.egg-info/*

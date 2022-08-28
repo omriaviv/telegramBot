@@ -47,12 +47,12 @@ def winner(message):
     main.poker_bot_service.winners_choose_player(message)
 
 
-@teleBot.message_handler(commands=[ADD_PLAYER_COMMAND, ADD_PLAYER_COMMAND2])
+@teleBot.message_handler(commands=[ADD_PLAYER_COMMAND])
 def add_player(message):
     main.poker_bot_service.enter_player_name(message)
 
 
-@teleBot.message_handler(commands=[REMOVE_PLAYER_COMMAND, REMOVE_PLAYER_COMMAND2])
+@teleBot.message_handler(commands=[REMOVE_PLAYER_COMMAND])
 def remove_player(message):
     main.poker_bot_service.remove_player(message)
 
