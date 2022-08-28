@@ -11,3 +11,6 @@
 /db.json
 /dist/*
 /pyTelegramPokerBot.egg-info/*
+/.idea/*
+/src/pokerbot/db.json
+/telegramBot.iml
