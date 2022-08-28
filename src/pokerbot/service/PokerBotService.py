@@ -21,7 +21,7 @@ class PokerBotService(object):
 
         players = self.db_service.get_all_players()
         if len(players) == 0:
-            self._bot.send_message(message.chat.id, f"No players were added, please run /{ADD_PLAYER_COMMAND} [name]")
+            self._bot.send_message(message.chat.id, f"No players were added, please run /{ADD_PLAYER_COMMAND}")
             return
 
         self.init_players()
@@ -112,10 +112,7 @@ class PokerBotService(object):
             self.send_player_does_not_exist(message.chat.id)
             return
 
-        if is_add:
-            player.game_payment.amount += GAME
-        elif player.game_payment.amount > GAME:
-            player.game_payment.amount -= GAME
+        player.add_rebuy(is_add)
 
         self.db_service.update_player(player)
         self._bot.send_message(message.chat.id, f"{player}")
@@ -210,11 +207,10 @@ class PokerBotService(object):
                                                     f"Chips amount must be numeric")
             return
 
-        win_amount = (float(chips) / CHIPS * GAME)
+        win_amount = (float(chips) / CHIPS * REBUY_AMOUNT)
 
         if win_amount > player.game_payment.amount:
             player.win_payment.amount = win_amount - player.game_payment.amount
-            player.game_payment.amount = 0
         elif win_amount < player.game_payment.amount:
             player.game_payment.amount = player.game_payment.amount - win_amount
             player.win_payment.amount = 0
@@ -223,8 +219,8 @@ class PokerBotService(object):
             player.win_payment.amount = 0
 
         jackpot = self.get_jackpot()
-        total_chips = jackpot / GAME * CHIPS
-        winners_chips = (self.get_total_wins() / GAME * CHIPS) + float(chips)
+        total_chips = jackpot / REBUY_AMOUNT * CHIPS
+        winners_chips = (self.get_total_wins() / REBUY_AMOUNT * CHIPS) + float(chips)
         if winners_chips > total_chips:
             self._bot.send_message(message.chat.id,
                                    f"{PROHIBITED} Invalid wins amount, "
@@ -259,12 +255,12 @@ class PokerBotService(object):
 
     @staticmethod
     def format_jackpot(jackpot: float):
-        return f"{JACKPOT}: {jackpot} {MONEY}\nTotal Chips: {int(jackpot / GAME * CHIPS)}"
+        return f"{JACKPOT}: {jackpot} {MONEY}\nTotal Chips: {int(jackpot / REBUY_AMOUNT * CHIPS)}"
 
     def get_jackpot(self) -> float:
         jackpot = 0
         for player in self.db_service.get_all_players():
-            jackpot += player.game_payment.amount
+            jackpot += player.rebuy_count * REBUY_AMOUNT
 
         return jackpot
 

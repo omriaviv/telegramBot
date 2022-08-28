@@ -1,12 +1,14 @@
-from constants import GAME
+from constants import REBUY_AMOUNT
 import json
+
 
 class Player(object):
     def __init__(self, name: str):
         self.name = name.lower()
-        self.game_payment = Payment(PaymentType.GAME, GAME, '')
+        self.game_payment = Payment(PaymentType.GAME, REBUY_AMOUNT, '')
         self.food_payment = Payment(PaymentType.FOOD, 0, '')
         self.win_payment = Payment(PaymentType.WIN, 0, '')
+        self.rebuy_count = 1
 
     def __str__(self):
         return f"{self.name}{self.game_payment}{self.food_payment}{self.win_payment}"
@@ -16,7 +18,8 @@ class Player(object):
             'name': self.name,
             'food_payment': self.food_payment.__dict__(),
             'game_payment': self.game_payment.__dict__(),
-            'win_payment': self.win_payment.__dict__()
+            'win_payment': self.win_payment.__dict__(),
+            'rebuy_count': self.rebuy_count
         }
 
     @staticmethod
@@ -26,7 +29,17 @@ class Player(object):
         player.game_payment = Payment.from_dict(dict['game_payment'])
         player.food_payment = Payment.from_dict(dict['food_payment'])
         player.win_payment = Payment.from_dict(dict['win_payment'])
+        player.rebuy_count = dict['rebuy_count']
+
         return player
+
+    def add_rebuy(self, is_add):
+        if is_add:
+            self.rebuy_count += 1
+        elif self.rebuy_count > 1:
+            self.rebuy_count -= 1
+
+        self.game_payment.amount = self.rebuy_count * REBUY_AMOUNT
 
 
 class Payment(object):

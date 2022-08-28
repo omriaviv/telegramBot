@@ -7,8 +7,9 @@
       <excludeFolder url="file://$MODULE_DIR$/src/build" />
       <excludeFolder url="file://$MODULE_DIR$/src/dist" />
       <excludeFolder url="file://$MODULE_DIR$/src/pyTelegramPokerBot.egg-info" />
+      <excludeFolder url="file://$MODULE_DIR$/venv" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 3.8 (telegramBot)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
