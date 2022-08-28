@@ -46,13 +46,13 @@ class PokerBotService(object):
         self._bot.send_message(message.chat.id, f"{STOPWATCH} Total Game Time: {total_time}")
         self.status(message)
         self.db_service.remove_started_timestamp(started_timestamp)
-        self._bot.send_message(message.chat.id, f"Run /{WINNER_COMMAND} [name] [chips]")
+        self._bot.send_message(message.chat.id, f"Run /{WINNER_COMMAND}")
 
-    def add_player(self, message):
+    def enter_player_name(self, message):
         self._bot.send_message(message.chat.id,
                                "Enter player name", reply_markup=types.ForceReply())
 
-    def add_player_name(self, message):
+    def add_player(self, message):
         player = self.db_service.search_player(message.text)
 
         if not player:
@@ -77,16 +77,16 @@ class PokerBotService(object):
         if not self.is_game_started(message.chat.id):
             return
 
-        markup = self.generate_players_buttons()
+        markup = self.generate_players_buttons(CallbackDataType.REBUY)
         self._bot.send_message(message.chat.id, "\nRebuy - Choose Player", reply_markup=markup)
 
-    def generate_players_buttons(self):
+    def generate_players_buttons(self, callback_data_type: CallbackDataType):
         markup = types.InlineKeyboardMarkup()
         players = self.db_service.get_all_players()
         for player in players:
             markup.add(types.InlineKeyboardButton(text=player.name,
                                                   callback_data=
-                                                  ButtonCallbackData(CallbackDataType.REBUY, player.id).to_json()))
+                                                  ButtonCallbackData(callback_data_type, player.id).to_json()))
 
         return markup
 
@@ -109,6 +109,7 @@ class PokerBotService(object):
         player = self.db_service.get_player(player_id)
 
         if not player:
+            self.send_player_does_not_exist(message.chat.id)
             return
 
         if is_add:
@@ -130,25 +131,35 @@ class PokerBotService(object):
         self._bot.send_message(message.chat.id,
                                "Game in progress" if self.db_service.get_started_timestamp() > 0 else "Game ended")
 
-    def food_order(self, message):
+    def food(self, message):
         if not self.is_game_started(message.chat.id):
             return
 
-        params = self.parse_command(message, FOOD_COMMAND, ['name', 'amount'])
-        if len(params) == 0:
+        markup = self.generate_players_buttons(CallbackDataType.FOOD)
+        self._bot.send_message(message.chat.id, "\nFood - Choose Player", reply_markup=markup)
+
+    def food_enter_amount(self, message, player_id):
+        player = self.db_service.get_player(player_id)
+
+        if not player:
+            self.send_player_does_not_exist(message.chat.id)
             return
 
-        player_name = params[0]
-        food_amount = params[1]
+        self._bot.send_message(message.chat.id,
+                               f"{player.name}, please enter food amount", reply_markup=types.ForceReply())
+
+    def food_order(self, message):
+        split = message.reply_to_message.text.split(',')
+        player_name = split[0]
 
         player = self.db_service.search_player(player_name)
         if not player:
-            self.send_player_does_not_exist(message.chat.id, player_name)
+            self.send_player_does_not_exist(message.chat.id)
             return
 
+        food_amount = message.text
         if not food_amount.isnumeric():
-            self._bot.send_message(message.chat.id, f"{PROHIBITED} "
-                                                    f"Invalid command, amount is not numeric")
+            self._bot.send_message(message.chat.id, f"{PROHIBITED} Amount must be numeric")
             return
 
         total_amount = float(food_amount)
@@ -159,52 +170,88 @@ class PokerBotService(object):
                 players[i].food_payment.amount = round(amount, 2)
                 players[i].food_payment.owes_to = player_name
                 self.db_service.update_player(players[i])
+            else:
+                players[i].food_payment.amount = 0
+                players[i].food_payment.owes_to = None
+                self.db_service.update_player(players[i])
 
         self.status(message)
 
-    def winner(self, message):
+    def winners_choose_player(self, message):
         if self.db_service.get_started_timestamp() > 0:
             self._bot.send_message(message.chat.id, f"{PROHIBITED} Please run /{END_COMMAND} to end game")
             return
 
-        params = self.parse_command(message, WINNER_COMMAND, ['name', 'chips'])
-        if len(params) == 0:
+        markup = self.generate_players_buttons(CallbackDataType.WINNERS)
+        self._bot.send_message(message.chat.id, "\nWinners - Choose Player", reply_markup=markup)
+
+    def winners_enter_chips(self, message, player_id):
+        player = self.db_service.get_player(player_id)
+
+        if not player:
+            self.send_player_does_not_exist(message.chat.id)
             return
 
-        player_name = params[0]
-        chips = params[1]
+        self._bot.send_message(message.chat.id,
+                               f"{player.name}, please enter chips count", reply_markup=types.ForceReply())
+
+    def winners(self, message):
+        split = message.reply_to_message.text.split(',')
+        player_name = split[0]
+        chips = message.text
 
         player = self.db_service.search_player(player_name)
         if not player:
-            self.send_player_does_not_exist(message.chat.id, player_name)
+            self.send_player_does_not_exist(message.chat.id)
             return
 
         if not chips.isnumeric():
             self._bot.send_message(message.chat.id, f"{PROHIBITED} "
-                                                    f"Invalid command, chips is not numeric")
+                                                    f"Chips amount must be numeric")
             return
 
-        player.win_payment.amount = float(chips) / CHIPS * GAME
+        win_amount = (float(chips) / CHIPS * GAME)
+
+        if win_amount > player.game_payment.amount:
+            player.win_payment.amount = win_amount - player.game_payment.amount
+            player.game_payment.amount = 0
+        elif win_amount < player.game_payment.amount:
+            player.game_payment.amount = player.game_payment.amount - win_amount
+            player.win_payment.amount = 0
+        else:
+            player.game_payment.amount = 0
+            player.win_payment.amount = 0
 
         jackpot = self.get_jackpot()
         total_chips = jackpot / GAME * CHIPS
-        total_wins = (self.get_total_wins() / GAME * CHIPS) + float(chips)
-        if total_wins > total_chips:
+        winners_chips = (self.get_total_wins() / GAME * CHIPS) + float(chips)
+        if winners_chips > total_chips:
             self._bot.send_message(message.chat.id,
                                    f"{PROHIBITED} Invalid wins amount, "
-                                   f"total wins: {int(total_wins)}, chips: {int(total_chips)}")
+                                   f"total wins: {int(winners_chips)}, chips: {int(total_chips)}")
             return
 
         self.db_service.update_player(player)
         self._bot.send_message(message.chat.id, f"{TROPHY} {player_name} won {player.win_payment.amount} {MONEY}")
 
-        if total_wins < total_chips:
+        if winners_chips < total_chips:
             self._bot.send_message(message.chat.id,
-                                   f"Jackpot left with chips: {int(total_chips)}"
-                                   f", total wins: {total_wins}"
+                                   f"Jackpot left with chips: {int(total_chips)-int(chips)}"
                                    f"\nPlease add more /{WINNER_COMMAND}")
         else:
-            self.status(message)
+            players = self.db_service.get_all_players()
+            winners = [p for p in players if p.win_payment.amount > 0]
+            winners.sort(key=lambda p: p.win_payment.amount, reverse=True)
+
+            for w in winners:
+                self._bot.send_message(message.chat.id,
+                                       f"{TROPHY} {player_name} won {w.win_payment.amount} {MONEY}")
+
+            _status = ''
+            for player in players:
+                _status += f"{player}\n---\n"
+            self._bot.send_message(message.chat.id, _status)
+            self._bot.send_message(message.chat.id, "Game ended")
 
     def send_jackpot(self, message):
         jackpot = self.get_jackpot()
@@ -228,28 +275,19 @@ class PokerBotService(object):
 
         return total_wins
 
-    def parse_command(self, message, command: str, params: []) -> []:
-        split = message.text.split(' ')
-        if len(split) < len(params) + 1:
-            self._bot.send_message(message.chat.id, f"{PROHIBITED} "
-                                                    f"Invalid command, please try again: /{command} {params}")
-            return []
-
-        return split[1:]
-
     def remove_player(self, message):
-        params = self.parse_command(message, REMOVE_PLAYER_COMMAND, ['name'])
-        if len(params) == 0:
-            return
+        markup = self.generate_players_buttons(CallbackDataType.REMOVE_PLAYER)
+        self._bot.send_message(message.chat.id, "\nRemove Player - Choose Player", reply_markup=markup)
 
-        name = params[0]
-        player = self.db_service.search_player(name)
+    def remove_player_from_db(self, message, player_id):
+        player = self.db_service.get_player(player_id)
+
         if not player:
-            self.send_player_does_not_exist(message.chat.id, name)
+            self.send_player_does_not_exist(message.chat.id)
             return
 
-        if self.db_service.remove_player(name):
-            self._bot.send_message(message.chat.id, f"{CHECK_MARK_BLACK} {name} was removed")
+        if self.db_service.remove_player(player.name):
+            self._bot.send_message(message.chat.id, f"{CHECK_MARK_BLACK} {player.name} was removed")
 
     @staticmethod
     def generate_menu_buttons():
@@ -294,11 +332,11 @@ class PokerBotService(object):
 
         return markup
 
-    def help(self, message):
+    def menu(self, message):
         self._bot.send_message(message.chat.id, f"{BOOK} Menu", reply_markup=self.generate_menu_buttons())
 
-    def send_player_does_not_exist(self, chat_id, player_name):
-        self._bot.send_message(chat_id, f"{PROHIBITED} {player_name} doesn't exist")
+    def send_player_does_not_exist(self, chat_id):
+        self._bot.send_message(chat_id, f"{PROHIBITED} Player doesn't exist")
 
     def init_players(self):
         players = self.db_service.get_all_players()

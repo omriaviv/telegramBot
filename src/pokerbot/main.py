@@ -39,17 +39,17 @@ def status(message):
 
 @teleBot.message_handler(commands=[FOOD_COMMAND])
 def food(message):
-    main.poker_bot_service.food_order(message)
+    main.poker_bot_service.food(message)
 
 
 @teleBot.message_handler(commands=[WINNER_COMMAND])
 def winner(message):
-    main.poker_bot_service.winner(message)
+    main.poker_bot_service.winners_choose_player(message)
 
 
 @teleBot.message_handler(commands=[ADD_PLAYER_COMMAND, ADD_PLAYER_COMMAND2])
 def add_player(message):
-    main.poker_bot_service.add_player(message)
+    main.poker_bot_service.enter_player_name(message)
 
 
 @teleBot.message_handler(commands=[REMOVE_PLAYER_COMMAND, REMOVE_PLAYER_COMMAND2])
@@ -57,18 +57,46 @@ def remove_player(message):
     main.poker_bot_service.remove_player(message)
 
 
-@teleBot.message_handler(commands=[HELP_COMMAND])
-def help_command(message):
-    main.poker_bot_service.help(message)
+@teleBot.message_handler(commands=[MENU_COMMAND])
+def menu_command(message):
+    main.poker_bot_service.menu(message)
 
 
 def is_reply_add_player(message):
     if message.reply_to_message.text == 'Enter player name' \
             or 'please choose another name' in message.reply_to_message.text:
-        main.poker_bot_service.add_player_name(message)
+        return True
+
+    return False
 
 
 @teleBot.message_handler(func=is_reply_add_player)
+def reply_add_player(message):
+    main.poker_bot_service.add_player(message)
+
+
+def is_reply_food_amount(message):
+    if 'please enter food amount' in message.reply_to_message.text:
+        return True
+
+    return False
+
+
+@teleBot.message_handler(func=is_reply_food_amount)
+def reply_food_amount(message):
+    main.poker_bot_service.food_order(message)
+
+
+def is_reply_chips_count(message):
+    if 'please enter chips count' in message.reply_to_message.text:
+        return True
+
+    return False
+
+
+@teleBot.message_handler(func=is_reply_chips_count)
+def reply_chips_count(message):
+    main.poker_bot_service.winners(message)
 
 
 @teleBot.callback_query_handler(func=lambda call: True)
@@ -85,19 +113,25 @@ def callback_query_handler(call):
         elif command == DELETE_RE_BUY_COMMAND:
             main.poker_bot_service.delete_re_buy(call.message)
         elif command == FOOD_COMMAND:
-            main.poker_bot_service.food_order(call.message)
+            main.poker_bot_service.food(call.message)
         elif command == END_COMMAND:
             main.poker_bot_service.end(call.message)
         elif command == WINNER_COMMAND:
-            main.poker_bot_service.winner(call.message)
+            main.poker_bot_service.winners_choose_player(call.message)
         elif command == ADD_PLAYER_COMMAND:
-            main.poker_bot_service.add_player(call.message)
+            main.poker_bot_service.enter_player_name(call.message)
         elif command == REMOVE_PLAYER_COMMAND:
             main.poker_bot_service.remove_player(call.message)
     elif callback_data.type == CallbackDataType.REBUY:
         main.poker_bot_service.add_rebuy_to_player(call.message, callback_data.value, True)
     elif callback_data.type == CallbackDataType.DELETE_REBUY:
         main.poker_bot_service.add_rebuy_to_player(call.message, callback_data.value, False)
+    elif callback_data.type == CallbackDataType.REMOVE_PLAYER:
+        main.poker_bot_service.remove_player_from_db(call.message, callback_data.value)
+    elif callback_data.type == CallbackDataType.FOOD:
+        main.poker_bot_service.food_enter_amount(call.message, callback_data.value)
+    elif callback_data.type == CallbackDataType.WINNERS:
+        main.poker_bot_service.winners_enter_chips(call.message, callback_data.value)
 
 
 if __name__ == '__main__':

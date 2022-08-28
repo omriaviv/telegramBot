@@ -15,7 +15,6 @@ ADD_PLAYER_COMMAND = 'addPlayer'
 ADD_PLAYER_COMMAND2 = 'addplayer'
 REMOVE_PLAYER_COMMAND = 'removePlayer'
 REMOVE_PLAYER_COMMAND2 = 'removeplayer'
-HELP_COMMAND = 'help'
 MENU_COMMAND = 'menu'
 
 ZANY_FACE = '\U0001F92A'

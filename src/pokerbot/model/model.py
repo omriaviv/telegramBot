@@ -59,6 +59,9 @@ class CallbackDataType(object):
     COMMAND = 'COMMAND'
     REBUY = 'REBUY'
     DELETE_REBUY = 'DELETE_REBUY'
+    REMOVE_PLAYER = 'REMOVE_PLAYER'
+    FOOD = 'FOOD'
+    WINNERS = 'WINNERS'
 
 
 class ButtonCallbackData(object):

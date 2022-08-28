@@ -40,4 +40,7 @@ class DbService(object):
     def get_player(self, player_id: int) -> Player:
         doc = self.db.get(doc_id=player_id)
 
+        if not doc:
+            return None
+
         return Player.from_dict(doc)
