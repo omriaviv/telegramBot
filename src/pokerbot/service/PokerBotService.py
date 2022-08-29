@@ -44,9 +44,9 @@ class PokerBotService(object):
         end_time = datetime.now().replace(microsecond=0)
         total_time = end_time - start_time
         self._bot.send_message(message.chat.id, f"{STOPWATCH} Total Game Time: {total_time}")
-        self.status(message)
         self.db_service.remove_started_timestamp(started_timestamp)
-        self._bot.send_message(message.chat.id, f"Run /{WINNER_COMMAND}")
+        self.status(message)
+        self.winners_choose_player(message)
 
     def enter_player_name(self, message):
         self._bot.send_message(message.chat.id,
@@ -207,17 +207,6 @@ class PokerBotService(object):
                                                     f"Chips amount must be numeric")
             return
 
-        win_amount = (float(chips) / CHIPS * REBUY_AMOUNT)
-
-        if win_amount > player.game_payment.amount:
-            player.win_payment.amount = win_amount - player.game_payment.amount
-        elif win_amount < player.game_payment.amount:
-            player.game_payment.amount = player.game_payment.amount - win_amount
-            player.win_payment.amount = 0
-        else:
-            player.game_payment.amount = 0
-            player.win_payment.amount = 0
-
         jackpot = self.get_jackpot()
         total_chips = jackpot / REBUY_AMOUNT * CHIPS
         winners_chips = (self.get_total_wins() / REBUY_AMOUNT * CHIPS) + float(chips)
@@ -227,27 +216,43 @@ class PokerBotService(object):
                                    f"total wins: {int(winners_chips)}, chips: {int(total_chips)}")
             return
 
+        player.win_payment.amount = (float(chips) / CHIPS * REBUY_AMOUNT)
         self.db_service.update_player(player)
-        self._bot.send_message(message.chat.id, f"{TROPHY} {player_name} won {player.win_payment.amount} {MONEY}")
+
+        self.send_player_win_message(message, player)
 
         if winners_chips < total_chips:
             self._bot.send_message(message.chat.id,
-                                   f"Jackpot left with chips: {int(total_chips)-int(chips)}"
-                                   f"\nPlease add more /{WINNER_COMMAND}")
+                                   f"Jackpot left with chips: {int(total_chips)-int(winners_chips)}")
+            self.winners_choose_player(message)
         else:
-            players = self.db_service.get_all_players()
-            winners = [p for p in players if p.win_payment.amount > 0]
-            winners.sort(key=lambda p: p.win_payment.amount, reverse=True)
+            self.send_final_status_message(message)
 
-            for w in winners:
-                self._bot.send_message(message.chat.id,
-                                       f"{TROPHY} {player_name} won {w.win_payment.amount} {MONEY}")
+    def send_final_status_message(self, message):
+        _status = ''
+        players = self.db_service.get_all_players()
+        for p in players:
+            if p.win_payment.amount > p.game_payment.amount:
+                p.win_payment.amount = p.win_payment.amount - p.game_payment.amount
+                p.game_payment.amount = 0
+            elif p.win_payment.amount < p.game_payment.amount:
+                p.game_payment.amount = p.game_payment.amount - p.win_payment.amount
+                p.win_payment.amount = 0
+            else:
+                p.game_payment.amount = 0
+                p.win_payment.amount = 0
 
-            _status = ''
-            for player in players:
-                _status += f"{player}\n---\n"
-            self._bot.send_message(message.chat.id, _status)
-            self._bot.send_message(message.chat.id, "Game ended")
+            _status += f"{p}\n---\n"
+        self._bot.send_message(message.chat.id, _status)
+        self._bot.send_message(message.chat.id, "Game ended")
+
+    def send_player_win_message(self, message, player):
+        win_amount = player.win_payment.amount
+        if win_amount > player.game_payment.amount:
+            win_amount = win_amount - player.game_payment.amount
+        else:
+            win_amount = 0
+        self._bot.send_message(message.chat.id, f"{TROPHY} {player.name} won {win_amount} {MONEY}")
 
     def send_jackpot(self, message):
         jackpot = self.get_jackpot()

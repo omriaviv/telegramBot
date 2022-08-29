@@ -32,6 +32,11 @@ def re_buy(message):
     main.poker_bot_service.re_buy(message)
 
 
+@teleBot.message_handler(commands=[DELETE_RE_BUY_COMMAND])
+def delete_rebuy_command(message):
+    main.poker_bot_service.delete_re_buy(message)
+
+
 @teleBot.message_handler(commands=[STATUS_COMMAND])
 def status(message):
     main.poker_bot_service.status(message)
@@ -63,6 +68,9 @@ def menu_command(message):
 
 
 def is_reply_add_player(message):
+    if not message.reply_to_message:
+        return
+
     if message.reply_to_message.text == 'Enter player name' \
             or 'please choose another name' in message.reply_to_message.text:
         return True
@@ -76,6 +84,9 @@ def reply_add_player(message):
 
 
 def is_reply_food_amount(message):
+    if not message.reply_to_message:
+        return
+
     if 'please enter food amount' in message.reply_to_message.text:
         return True
 
@@ -88,6 +99,9 @@ def reply_food_amount(message):
 
 
 def is_reply_chips_count(message):
+    if not message.reply_to_message:
+        return
+
     if 'please enter chips count' in message.reply_to_message.text:
         return True
 
